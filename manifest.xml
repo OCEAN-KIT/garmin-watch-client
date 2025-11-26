@@ -1,0 +1,26 @@
+<?xml version="1.0"?>
+<iq:manifest version="3" xmlns:iq="http://www.garmin.com/xml/connectiq">
+    <iq:application id="8a0fc0d1-8217-4b9e-97b1-26f5551cd633" type="watch-app" name="@Strings.AppName" entry="OCDiverApp" launcherIcon="@Drawables.LauncherIcon" minSdkVersion="3.2.0">
+        <!-- 제품 ID는 수동 입력 대신 VS Code의 "Monkey C: Edit Products"로 꼭 한 번 설정하세요 -->
+        <iq:products>
+            <iq:product id="descentg1"/>
+            <iq:product id="descentmk2"/>
+            <iq:product id="descentmk2i"/>
+            <iq:product id="descentmk2s"/>
+            <iq:product id="descentmk3"/>
+            <iq:product id="descentmk3i"/>
+        </iq:products>
+        <iq:permissions>
+            <iq:uses-permission id="Communications"/>
+            <iq:uses-permission id="Fit"/>
+            <iq:uses-permission id="FitContributor"/>
+            <iq:uses-permission id="Positioning"/>
+            <iq:uses-permission id="Sensor"/>
+        </iq:permissions>
+        <iq:languages>
+            <iq:language>eng</iq:language>
+            <iq:language>kor</iq:language>
+        </iq:languages>
+        <iq:barrels/>
+    </iq:application>
+</iq:manifest>

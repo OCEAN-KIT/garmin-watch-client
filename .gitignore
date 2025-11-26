@@ -1,0 +1,8 @@
+﻿bin/
+mir/
+internal-mir/
+*.debug.xml
+gen/
+# 민감 정보가 담긴 파일 제외
+resources/strings.xml
+resources/strings/strings.xml
