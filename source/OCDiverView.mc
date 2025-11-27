@@ -4,12 +4,13 @@ using Toybox.System as Sys;
 using Toybox.Lang;
 using Toybox.Sensor; 
 using Toybox.Application as App; 
-using Toybox.Timer; // [New]
+using Toybox.Timer; 
 
 class OCDiverView extends UI.View {
 
     var gpsManager;
     var active = false;
+    
     var isEndingSequence = false;
 
     var strGridPrefix, strRecording, strResetInfo;
@@ -17,19 +18,22 @@ class OCDiverView extends UI.View {
     var strGpsFail; 
     var gpsMsg = "";
     var gpsReady = false;
+
     var uploadMsg = null;
     
-    // [New] 플래시 메시지 변수
+    // 플래시 메시지 변수
     var flashMsg = null;
     var flashTimer;
 
     function initialize() {
         View.initialize();
+        
         gpsMsg        = UI.loadResource(Rez.Strings.GpsWaiting);
         strGridPrefix = UI.loadResource(Rez.Strings.MsgGridPrefix);
+        strRecording  = UI.loadResource(Rez.Strings.MsgRecording);
         
-        strOrg1       = UI.loadResource(Rez.Strings.OrgLine1); 
-        strOrg2       = UI.loadResource(Rez.Strings.OrgLine2); 
+        strOrg1       = UI.loadResource(Rez.Strings.OrgLine1); // OCEAN
+        strOrg2       = UI.loadResource(Rez.Strings.OrgLine2); // CAMPUS
         
         strResetInfo  = UI.loadResource(Rez.Strings.MsgResetInfo);
         strGpsFail    = UI.loadResource(Rez.Strings.GpsFail); 
@@ -37,8 +41,10 @@ class OCDiverView extends UI.View {
         gpsManager = new GpsManager(method(:onGpsUpdate));
     }
 
+    // [Fix] 앱 초기 실행 시 스플래시 로직 수행
+    // 메시지(Saved Locally 등)가 떠있지 않을 때만 스플래시 실행 (충돌 방지)
     function onShow() {
-        if (!active && !isEndingSequence) {
+        if (!active && !isEndingSequence && uploadMsg == null) {
             var app = App.getApp();
             app.startSplashSequence();
         }
@@ -56,7 +62,6 @@ class OCDiverView extends UI.View {
         UI.requestUpdate();
     }
     
-    // [New] 1초간 피드백 메시지 표시
     function triggerFlashMessage(text) {
         flashMsg = text;
         UI.requestUpdate();
@@ -81,8 +86,11 @@ class OCDiverView extends UI.View {
     function _triggerUpload() {
         isEndingSequence = false; 
         if (gpsManager != null) { gpsManager.stop(); } 
+        
         var app = App.getApp();
-        if (app instanceof OCDiverApp) { app.uploadSession(); }
+        if (app instanceof OCDiverApp) {
+            app.uploadSession(); 
+        }
     }
 
     function onUpdate(dc) {
@@ -102,13 +110,11 @@ class OCDiverView extends UI.View {
 
         if (active) {
             var topText = strGridPrefix + gDataManager.gridId;
-            // Other(2)는 상태 표시 없음
             if (gDataManager.workType == 1) { 
                 topText = "< " + gDataManager.defaultStatus + " >"; 
             }
             dc.drawText(cx, 35, Gfx.FONT_TINY, topText, Gfx.TEXT_JUSTIFY_CENTER | Gfx.TEXT_JUSTIFY_VCENTER);
 
-            // [Modified] 플래시 메시지 우선 표시
             if (flashMsg != null) {
                 dc.drawText(cx, cy - 5, Gfx.FONT_MEDIUM, flashMsg, Gfx.TEXT_JUSTIFY_CENTER | Gfx.TEXT_JUSTIFY_VCENTER);
             } else {

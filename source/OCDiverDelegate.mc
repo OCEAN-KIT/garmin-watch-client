@@ -10,8 +10,7 @@ class OCDiverDelegate extends UI.BehaviorDelegate {
     var view;
     var statusList = [];
     var sidx = 0;
-    // saveTimer는 OCDiverView의 스플래시 로직으로 대체되어 삭제됨
-
+    
     function initialize(v) {
         UI.BehaviorDelegate.initialize();
         view = v;
@@ -68,13 +67,10 @@ class OCDiverDelegate extends UI.BehaviorDelegate {
     }
 
     function showMainMenu() {
-        var menu = new UI.Menu2({:title=>"Ocean Campus"});
+        var menu = new UI.Menu2({:title=>"Home"});
         menu.addItem(new UI.MenuItem("Start Diving", "Select Activity", :start_dive, null));
         menu.addItem(new UI.MenuItem("End Diving", "Upload All Logs", :end_dive, null));
-        
-        // [New] 기기 정보 메뉴 추가
         menu.addItem(new UI.MenuItem(UI.loadResource(Rez.Strings.MenuInfo), "Check ID", :dev_info, null));
-        
         UI.pushView(menu, new MainMenuDelegate(self), UI.SLIDE_UP);
     }
     
@@ -167,11 +163,11 @@ class MainMenuDelegate extends UI.Menu2InputDelegate {
             showActivitySelectMenu();
         } else if (id == :end_dive) {
             var app = App.getApp();
+            // [Fix] 닫기 전에 플래그 설정 (onShow 충돌 방지)
             if (app.mView != null) { app.mView.isEndingSequence = true; }
             UI.popView(UI.SLIDE_IMMEDIATE);
             if (app instanceof OCDiverApp) { app.handleEndDiving(); }
         } else if (id == :dev_info) {
-            // [New] 기기 정보 화면으로 이동
             UI.pushView(new DeviceInfoView(), new DeviceInfoDelegate(), UI.SLIDE_LEFT);
         }
     }
@@ -192,17 +188,20 @@ class MainMenuDelegate extends UI.Menu2InputDelegate {
 
 class StopMenuDelegate extends UI.Menu2InputDelegate {
     var parent;
-    function initialize(p) { UI.Menu2InputDelegate.initialize(); parent = p; }
+    function initialize(p) { Menu2InputDelegate.initialize(); parent = p; }
     function onSelect(item) {
         var id = item.getId();
         if (id == :resume) { 
             UI.popView(UI.SLIDE_DOWN);
         } else if (id == :save) {
             var app = App.getApp();
+            // 저장 요청 (타이머 시작)
             if (app instanceof OCDiverApp) { (app as OCDiverApp).stopAndSave(); }
             parent.triggerStop(); 
+            
+            // 메뉴 닫기 -> BaseView 노출 -> onShow() 호출됨 (메시지 있으면 스플래시 스킵됨)
             UI.popView(UI.SLIDE_IMMEDIATE); 
-            // View onShow handles splash
+            
         } else if (id == :discard) { 
             parent.triggerStop(); 
             UI.popView(UI.SLIDE_DOWN);
@@ -210,6 +209,7 @@ class StopMenuDelegate extends UI.Menu2InputDelegate {
     }
 }
 
+// ... (ActivitySelectDelegate, InDiveMenuDelegate, StartConfMenuDelegate 등은 이전과 동일) ...
 class ActivitySelectDelegate extends UI.Menu2InputDelegate {
     function initialize() { Menu2InputDelegate.initialize(); }
     function onSelect(item) {
@@ -225,60 +225,38 @@ class ActivitySelectDelegate extends UI.Menu2InputDelegate {
             openPicker();
         }
     }
-    
     function onBack() {
         var app = App.getApp();
-        var menu = new UI.Menu2({:title=>"Ocean Campus"});
+        var menu = new UI.Menu2({:title=>"Home"});
         menu.addItem(new UI.MenuItem("Start Diving", "Select Activity", :start_dive, null));
         menu.addItem(new UI.MenuItem("End Diving", "Upload All Logs", :end_dive, null));
-        menu.addItem(new UI.MenuItem(UI.loadResource(Rez.Strings.MenuInfo), "Check ID", :dev_info, null)); // Back 시에도 메뉴 구성 동일하게
-        
+        menu.addItem(new UI.MenuItem(UI.loadResource(Rez.Strings.MenuInfo), "Check ID", :dev_info, null)); 
         var delegate = new MainMenuDelegate(new OCDiverDelegate(app.mView));
         UI.switchToView(menu, delegate, UI.SLIDE_RIGHT);
     }
-
-    function openPicker() {
-        var picker = new GridPicker();
-        UI.switchToView(picker, new GridPickerDelegate(), UI.SLIDE_LEFT);
-    }
+    function openPicker() { var picker = new GridPicker(); UI.switchToView(picker, new GridPickerDelegate(), UI.SLIDE_LEFT); }
 }
-
 class InDiveMenuDelegate extends UI.Menu2InputDelegate {
     var parent;
     function initialize(p) { Menu2InputDelegate.initialize(); parent = p; }
     function onSelect(item) {
         var id = item.getId();
-        if (id == :dec_count) { gDataManager.decrementTotalCount(); } 
-        else if (id == :jump_id) { gDataManager.currentId += 10; } 
-        else if (id == :chg_grid) {
-            var picker = new GridPicker();
-            UI.pushView(picker, new GridPickerDelegate(), UI.SLIDE_LEFT);
-            return; 
-        }
-        UI.popView(UI.SLIDE_DOWN);
-        UI.requestUpdate();
+        if (id == :dec_count) { gDataManager.decrementTotalCount(); } else if (id == :jump_id) { gDataManager.currentId += 10; } 
+        else if (id == :chg_grid) { var picker = new GridPicker(); UI.pushView(picker, new GridPickerDelegate(), UI.SLIDE_LEFT); return; }
+        UI.popView(UI.SLIDE_DOWN); UI.requestUpdate();
     }
 }
-
 class StartConfMenuDelegate extends UI.Menu2InputDelegate {
     function initialize() { Menu2InputDelegate.initialize(); }
     function onSelect(item) {
         var id = item.getId();
         if (id == :start_final) {
-            if (gDataManager.workType == 1) { openSetupIdPicker(); } 
-            else { startSessionNow(); }
+            if (gDataManager.workType == 1) { openSetupIdPicker(); } else { startSessionNow(); }
         } else if (id == :back_setup) {
             var picker = new GridPicker();
             UI.switchToView(picker, new GridPickerDelegate(), UI.SLIDE_RIGHT);
         }
     }
-    function openSetupIdPicker() {
-        var picker = new IdPicker();
-        UI.switchToView(picker, new SetupIdPickerDelegate(), UI.SLIDE_LEFT);
-    }
-    function startSessionNow() {
-        var app = App.getApp();
-        app.startDiveFlowAfterSetup(); 
-        UI.popView(UI.SLIDE_IMMEDIATE);
-    }
+    function openSetupIdPicker() { var picker = new IdPicker(); UI.switchToView(picker, new SetupIdPickerDelegate(), UI.SLIDE_LEFT); }
+    function startSessionNow() { var app = App.getApp(); app.startDiveFlowAfterSetup(); UI.popView(UI.SLIDE_IMMEDIATE); }
 }

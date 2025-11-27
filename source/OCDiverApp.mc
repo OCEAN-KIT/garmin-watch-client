@@ -70,7 +70,7 @@ class OCDiverApp extends App.AppBase {
 
         if ((Toybox has :ActivityRecording) && (AR has :createSession)) {
             session = AR.createSession({
-                :name => "Ocean Campus",
+                :name => "Ocean Keeper",
                 :sport => AR.SPORT_GENERIC,
                 :subSport => AR.SUB_SPORT_GENERIC
             });
@@ -80,6 +80,7 @@ class OCDiverApp extends App.AppBase {
         }
     }
 
+    // [Modified] 저장 후 1.5초 뒤 자동 넘김 로직 추가
     function stopAndSave() {
         gDataManager.writeFinalFitFields();
         
@@ -95,11 +96,20 @@ class OCDiverApp extends App.AppBase {
             var count = gDataManager.sessionActivities.size();
             mView.setUploadMessage("Saved Locally (" + count + ")", Gfx.COLOR_WHITE);
         }
+        
+        // [New] 1.5초 뒤에 메인 메뉴로 이동
+        if (_flowTimer == null) { _flowTimer = new Timer.Timer(); }
+        _flowTimer.start(method(:onLocalSaveFinished), 1500, false);
+    }
+    
+    // [New] 로컬 저장 완료 후 호출되는 콜백
+    function onLocalSaveFinished() as Void {
+        _flowTimer = null;
+        if (mView != null) { mView.clearUploadMessage(); }
+        if (mDelegate != null) { mDelegate.showMainMenu(); }
     }
 
-    // [New] End Diving 진입점: 데이터 체크 먼저 수행
     function handleEndDiving() {
-        // 1. 데이터가 하나도 없으면 GPS 잡을 필요 없이 바로 종료
         if (!gDataManager.hasActivitiesToSend() && !gNetworkManager.hasOfflineItems()) {
             if (mView != null) { 
                 mView.setUploadMessage("No Data Found", Gfx.COLOR_WHITE); 
@@ -109,31 +119,21 @@ class OCDiverApp extends App.AppBase {
             return;
         }
 
-        // 2. 데이터가 있다면 GPS 탐색 흐름 시작
         if (mView != null) {
             mView.startEndFlow(); 
         }
     }
     
-    // GPS 탐색 종료 후 호출되는 실제 업로드 함수
     function uploadSession() {
-        // handleEndDiving에서 이미 데이터 유무를 체크했으므로 바로 전송 로직 수행
-
-        // 1. 오프라인 큐 우선 처리
         if (!gDataManager.hasActivitiesToSend()) {
             gNetworkManager.syncOffline(method(:onUploadResult));
-            if (mView != null) { 
-                mView.setUploadMessage("Syncing Queue...", Gfx.COLOR_WHITE); 
-            }
+            if (mView != null) { mView.setUploadMessage("Syncing Queue...", Gfx.COLOR_WHITE); }
             return;
         }
 
-        // 2. 현재 세션 데이터 업로드
         var payload = gDataManager.getFinalSessionPayload();
         
-        if (mView != null) { 
-            mView.setUploadMessage("Uploading All...", Gfx.COLOR_WHITE); 
-        }
+        if (mView != null) { mView.setUploadMessage("Uploading All...", Gfx.COLOR_WHITE); }
 
         gNetworkManager.uploadData(payload, method(:onUploadResult));
     }

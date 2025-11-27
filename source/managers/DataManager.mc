@@ -184,7 +184,7 @@ class DataManager {
         Sys.println("Seaweed #" + unitId);
     }
 
-    // [New] 기타 활동 기록
+    // 기타 활동 기록
     function addOtherEvent() {
         totalCount += 1;
         var t = _elapsed();
@@ -227,7 +227,7 @@ class DataManager {
     // 3. Accumulation & Final Payload Generation
     // =========================================================
 
-    // [New] 현재 활동(Activity)이 끝났을 때 리스트에 추가하는 함수
+    // 현재 활동(Activity)이 끝났을 때 리스트에 추가하는 함수
     function accumulateCurrentActivity() {
         // 현재 활동 정보 구조화
         var activityInfo = {
@@ -253,7 +253,7 @@ class DataManager {
         resetCurrentActivity();
     }
 
-    // [Modified] 최종 전송용 JSON 구조 생성 (teamId 삭제, userId 추가)
+    // [Modified] 최종 전송용 JSON 구조 생성 (userId를 페어링 코드로 변환)
     function getFinalSessionPayload() {
         // 1. 위치 정보 계산
         var sLat = null; var sLon = null;
@@ -274,14 +274,18 @@ class DataManager {
         
         var startT = (globalStartEpoch != null) ? globalStartEpoch : Time.now().value();
 
-        // 2. 기기 ID 추출 (userId로 사용)
+        // 2. 기기 ID 추출
         var mySettings = Sys.getDeviceSettings();
-        var deviceId = mySettings.uniqueIdentifier;
-        if (deviceId == null) { deviceId = "UNKNOWN_DEVICE"; }
+        var rawDeviceId = mySettings.uniqueIdentifier;
+        if (rawDeviceId == null) { rawDeviceId = "UNKNOWN_DEVICE"; }
+
+        // [New] 페어링 코드 생성 (userId로 사용)
+        var finalUserId = _generatePairingCode(rawDeviceId);
 
         // 3. Summary 구성
+        // Unix Timestamp
         var summary = {
-            "userId"     => deviceId, // [New] teamId 대신 userId 사용
+            "userId"     => finalUserId, // rawDeviceId 대신 pairing code 전송
             "startTime"  => startT,
             "endTime"    => Time.now().value(),
             "startLat"   => sLat, "startLon" => sLon,
@@ -293,6 +297,38 @@ class DataManager {
             "summary"    => summary,
             "activities" => sessionActivities
         };
+    }
+    
+    // [New] DeviceInfoView와 동일한 로직으로 페어링 코드 생성
+    // (서버에서 이 코드를 키로 유저를 식별함)
+    function _generatePairingCode(deviceId) {
+        var salt = "OCDIVER"; // DeviceInfoView와 반드시 동일해야 함
+        var input = deviceId + salt;
+        
+        // FNV-1a Hash (32-bit)
+        var hash = 0x811c9dc5; 
+        var prime = 0x01000193;
+
+        var bytes = input.toUtf8Array();
+        
+        for (var i = 0; i < bytes.size(); i++) {
+            hash = hash ^ bytes[i];
+            hash = hash * prime;
+        }
+
+        // Base31 Encoding
+        var alphabet = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"; 
+        var code = "";
+        
+        if (hash < 0) { hash = ~hash; }
+
+        for (var i = 0; i < 6; i++) {
+            var idx = hash % alphabet.length();
+            code = code + alphabet.substring(idx, idx + 1);
+            hash = hash / alphabet.length();
+        }
+        
+        return code;
     }
     
     function hasActivitiesToSend() {
