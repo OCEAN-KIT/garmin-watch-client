@@ -104,7 +104,7 @@ class DataManager {
         if(fTotal != null) { fTotal.setData(0); }
         if(fCurrentCount != null) { fCurrentCount.setData(0); }
         
-        // 현재 활동 시작 시간 기록
+        // 현재 활동 시작 시간 기록 (FIT 파일 내부용)
         actStartEpoch = Time.now().value();
 
         // 전체 세션 시작 시간이 없으면 지금을 시작으로 설정 (최초 활동 시)
@@ -153,46 +153,53 @@ class DataManager {
         return [depth, temp];
     }
 
-    function _elapsed() {
-        if (actStartEpoch == null) { actStartEpoch = Time.now().value(); }
-        return Time.now().value() - actStartEpoch;
-    }
+    // [Deleted] _elapsed() 함수 삭제 (Timestamp 사용으로 불필요)
 
     // --- Recording Methods ---
 
     function addUrchinEvent() {
         totalCount += 1;
-        var t = _elapsed();
+        
+        // [Modified] Unix Timestamp 저장
+        var t = Time.now().value();
+        
         var sensors = _getSensorData(); 
-        // [Format]: [Time, Depth, Temp, TotalCount]
+        // [Format]: [Timestamp, Depth, Temp, TotalCount]
         workLogs.add([t, sensors[0], sensors[1], totalCount]); 
+        
         _updateFitCounts();
-        Sys.println("Urchin +1 -> " + totalCount);
+        Sys.println("Urchin +1 at " + t);
     }
 
     function addSeaweedEvent(status) {
-        var t = _elapsed();
+        // [Modified] Unix Timestamp 저장
+        var t = Time.now().value();
+        
         var sensors = _getSensorData();
         var unitId = currentId;
         currentId += 1; // ID 증가
         
-        // [Format]: [Time, Depth, Temp, UnitID, StatusCode]
+        // [Format]: [Timestamp, Depth, Temp, UnitID, StatusCode]
         workLogs.add([t, sensors[0], sensors[1], unitId, status]);
         
         totalCount += 1;
         _updateFitCounts();
-        Sys.println("Seaweed #" + unitId);
+        Sys.println("Seaweed #" + unitId + " at " + t);
     }
 
     // 기타 활동 기록
     function addOtherEvent() {
         totalCount += 1;
-        var t = _elapsed();
+        
+        // [Modified] Unix Timestamp 저장
+        var t = Time.now().value();
+        
         var sensors = _getSensorData();
-        // 포맷: [Time, Depth, Temp, Count] (성게와 동일)
+        // 포맷: [Timestamp, Depth, Temp, Count]
         workLogs.add([t, sensors[0], sensors[1], totalCount]);
+        
         _updateFitCounts();
-        Sys.println("Other Point Saved -> " + totalCount);
+        Sys.println("Other Point at " + t);
     }
     
     function decrementTotalCount() {
@@ -283,7 +290,6 @@ class DataManager {
         var finalUserId = _generatePairingCode(rawDeviceId);
 
         // 3. Summary 구성
-        // Unix Timestamp
         var summary = {
             "userId"     => finalUserId, // rawDeviceId 대신 pairing code 전송
             "startTime"  => startT,
