@@ -19,10 +19,7 @@ class OCDiverApp extends App.AppBase {
 
     function initialize() { AppBase.initialize(); }
 
-    function onStart(state) {
-        // [테스트용] 배포 시 삭제 필요: 기존 데이터 강제 초기화
-        Storage.clearValues(); 
-        
+    function onStart(state) {        
         gDataManager = new DataManager();
         gNetworkManager = new NetworkManager(); 
     }
@@ -39,10 +36,6 @@ class OCDiverApp extends App.AppBase {
         mDelegate = new OCDiverDelegate(mView);
         return [mView, mDelegate];
     }
-
-    // =========================================================
-    // Flow Control Methods
-    // =========================================================
 
     function startDiveFlowAfterSetup() {
         startDiveSession(); 
@@ -80,7 +73,6 @@ class OCDiverApp extends App.AppBase {
         }
     }
 
-    // [Modified] 저장 후 1.5초 뒤 자동 넘김 로직 추가
     function stopAndSave() {
         gDataManager.writeFinalFitFields();
         
@@ -97,12 +89,10 @@ class OCDiverApp extends App.AppBase {
             mView.setUploadMessage("Saved Locally (" + count + ")", Gfx.COLOR_WHITE);
         }
         
-        // [New] 1.5초 뒤에 메인 메뉴로 이동
         if (_flowTimer == null) { _flowTimer = new Timer.Timer(); }
         _flowTimer.start(method(:onLocalSaveFinished), 1500, false);
     }
     
-    // [New] 로컬 저장 완료 후 호출되는 콜백
     function onLocalSaveFinished() as Void {
         _flowTimer = null;
         if (mView != null) { mView.clearUploadMessage(); }
@@ -148,12 +138,20 @@ class OCDiverApp extends App.AppBase {
                 }
                 gDataManager.clearAllSession();
             } else { 
-                mView.setUploadMessage("Fail: Queued (" + code + ")", Gfx.COLOR_WHITE); 
+                if (code == 403) {
+                    // 미등록 기기 (2줄)
+                    mView.setUploadMessage("Please pair\nand try again", Gfx.COLOR_WHITE); 
+                } else {
+                    // 그 외 에러 (2줄)
+                    mView.setUploadMessage("Upload failed\nRetry later", Gfx.COLOR_WHITE); 
+                }
+                
+                // 로컬 큐 저장 완료 상태이므로 세션 클리어
                 gDataManager.clearAllSession();
             }
             
             _flowTimer = new Timer.Timer();
-            _flowTimer.start(method(:onFinishFlow), 2500, false);
+            _flowTimer.start(method(:onFinishFlow), 3500, false);
         }
     }
 

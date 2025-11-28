@@ -20,8 +20,8 @@ class OCDiverView extends UI.View {
     var gpsReady = false;
 
     var uploadMsg = null;
+    var uploadColor = Gfx.COLOR_WHITE;
     
-    // 플래시 메시지 변수
     var flashMsg = null;
     var flashTimer;
 
@@ -41,8 +41,6 @@ class OCDiverView extends UI.View {
         gpsManager = new GpsManager(method(:onGpsUpdate));
     }
 
-    // [Fix] 앱 초기 실행 시 스플래시 로직 수행
-    // 메시지(Saved Locally 등)가 떠있지 않을 때만 스플래시 실행 (충돌 방지)
     function onShow() {
         if (!active && !isEndingSequence && uploadMsg == null) {
             var app = App.getApp();
@@ -54,6 +52,7 @@ class OCDiverView extends UI.View {
 
     function setUploadMessage(msg, color) {
         uploadMsg = msg;
+        uploadColor = color;
         UI.requestUpdate();
     }
 
@@ -101,8 +100,22 @@ class OCDiverView extends UI.View {
         var cy = dc.getHeight()/2;
 
         if (uploadMsg != null) {
-            dc.setColor(Gfx.COLOR_WHITE, Gfx.COLOR_TRANSPARENT);
-            dc.drawText(cx, cy, Gfx.FONT_TINY, uploadMsg, Gfx.TEXT_JUSTIFY_CENTER | Gfx.TEXT_JUSTIFY_VCENTER);
+            dc.setColor(uploadColor, Gfx.COLOR_TRANSPARENT);
+            
+            var newlineIdx = uploadMsg.find("\n");
+            
+            if (newlineIdx != null) {
+                var line1 = uploadMsg.substring(0, newlineIdx);
+                var line2 = uploadMsg.substring(newlineIdx + 1, uploadMsg.length());
+                
+                // [수정] 줄 간격 확장 (총 50px 간격)
+                // cy - 20 -> cy - 25 (더 위로)
+                // cy + 10 -> cy + 25 (더 아래로)
+                dc.drawText(cx, cy - 25, Gfx.FONT_SMALL, line1, Gfx.TEXT_JUSTIFY_CENTER | Gfx.TEXT_JUSTIFY_VCENTER);
+                dc.drawText(cx, cy + 25, Gfx.FONT_SMALL, line2, Gfx.TEXT_JUSTIFY_CENTER | Gfx.TEXT_JUSTIFY_VCENTER);
+            } else {
+                dc.drawText(cx, cy, Gfx.FONT_SMALL, uploadMsg, Gfx.TEXT_JUSTIFY_CENTER | Gfx.TEXT_JUSTIFY_VCENTER);
+            }
             return; 
         }
 
@@ -113,16 +126,17 @@ class OCDiverView extends UI.View {
             if (gDataManager.workType == 1) { 
                 topText = "< " + gDataManager.defaultStatus + " >"; 
             }
-            dc.drawText(cx, 35, Gfx.FONT_TINY, topText, Gfx.TEXT_JUSTIFY_CENTER | Gfx.TEXT_JUSTIFY_VCENTER);
+            
+            dc.drawText(cx, cy - 55, Gfx.FONT_TINY, topText, Gfx.TEXT_JUSTIFY_CENTER | Gfx.TEXT_JUSTIFY_VCENTER);
 
             if (flashMsg != null) {
-                dc.drawText(cx, cy - 5, Gfx.FONT_MEDIUM, flashMsg, Gfx.TEXT_JUSTIFY_CENTER | Gfx.TEXT_JUSTIFY_VCENTER);
+                dc.drawText(cx, cy - 5, Gfx.FONT_LARGE, flashMsg, Gfx.TEXT_JUSTIFY_CENTER | Gfx.TEXT_JUSTIFY_VCENTER);
             } else {
                 var mainVal = gDataManager.totalCount.toString();
                 if (gDataManager.workType == 1) {
                      mainVal = "#" + gDataManager.currentId.toString();
                 }
-                dc.drawText(cx, cy - 5, Gfx.FONT_NUMBER_HOT, mainVal, Gfx.TEXT_JUSTIFY_CENTER | Gfx.TEXT_JUSTIFY_VCENTER);
+                dc.drawText(cx, cy - 5, Gfx.FONT_NUMBER_MEDIUM, mainVal, Gfx.TEXT_JUSTIFY_CENTER | Gfx.TEXT_JUSTIFY_VCENTER);
             }
 
             var info = Sensor.getInfo();
@@ -137,7 +151,7 @@ class OCDiverView extends UI.View {
             var timeStr = Lang.format("$1$:$2$", [clock.hour, clock.min.format("%02d")]);
             var infoStr = Lang.format("D: $1$m  T: $2$", [depth.format("%.1f"), timeStr]);
             
-            dc.drawText(cx, cy + 40, Gfx.FONT_TINY, infoStr, Gfx.TEXT_JUSTIFY_CENTER | Gfx.TEXT_JUSTIFY_VCENTER);
+            dc.drawText(cx, cy + 50, Gfx.FONT_TINY, infoStr, Gfx.TEXT_JUSTIFY_CENTER | Gfx.TEXT_JUSTIFY_VCENTER);
 
         } else {
             // Splash
